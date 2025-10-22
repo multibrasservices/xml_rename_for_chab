@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mon Portail de Services</title>
+    <link rel="icon" href="logo/mon_logo.png">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header>
+        <img src="logo/mon_logo.png" alt="Logo MultiBrasServices" class="logo">
+        <h1>Portail de Services</h1>
+        <button id="logout-button" class="hidden">Déconnexion</button>
+    </header>
+
+    <main>
+        <!-- Conteneur pour l'état non connecté -->
+        <div id="auth-container">
+            <h2>Connexion</h2>
+            <form id="login-form">
+                <input type="email" id="email-input" placeholder="Email" required>
+                <input type="password" id="password-input" placeholder="Mot de passe" required>
+                <button type="submit">Se connecter</button>
+            </form>
+            <p id="error-notification"></p>
+        </div>
+
+        <!-- Conteneur pour l'état connecté -->
+        <div id="services-container" class="hidden">
+            <div id="xml-processor-container">
+                <h2>Processeur de Fichiers XML</h2>
+                <p>Sélectionnez un ou plusieurs fichiers .xml ou .txt.</p>
+                <input type="file" id="file-input" multiple accept=".xml,.txt">
+                <button id="process-button">Traiter les Fichiers</button>
+                
+                <div id="results-container" class="hidden">
+                    <h3>Résultats</h3>
+                    <table id="results-table">
+                        <thead>
+                            <tr>
+                                <!-- MISE À JOUR : Ajout de data-column pour le tri -->
+                                <th data-column="ctrlSum">CtrlSum</th>
+                                <th data-column="execDate">Date d'Exécution</th>
+                                <th data-column="fileCounter">Compteur</th>
+                                <th data-column="fileName">Nom du Fichier</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                    
+                    <p id="total-sum"></p> 
+                    
+                    <button id="download-zip-button">Télécharger les fichiers modifiés (.zip)</button>
+                </div>
+                 <p id="xml-error-notification"></p>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>© 2025 MultiBrasServices</p>
+        <p>version 21.10.25</p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="app.js"></script>
+
+</body>
+</html>
