@@ -22,3 +22,9 @@ Elle effectue les opérations suivantes :
 L'application est hébergée et accessible via GitHub Pages à l'adresse suivante :
 
 [https://multibrasservices.github.io/xml_rename_for_chab/](https://multibrasservices.github.io/xml_rename_for_chab/)
+
+## Licence
+
+Ce projet est distribué sous la licence MIT. Voir le fichier `LICENSE` pour plus de détails.
+
+Copyright (c) 2025 MultiBrasServices
