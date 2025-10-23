@@ -4,7 +4,8 @@
 
 Cet outil a été développé pour répondre à une problématique spécifique rencontrée avec le logiciel comptable GADM (Gestion Comptable et Financière) du Groupement des Mousquetaires.
 
-Certaines banques exigent que les fichiers de paiement XML téléversés au cours d'une même journée aient un identifiant de message (`MsgId`) unique pour chaque transaction. Le logiciel GADM ne garantit pas cette unicité, ce qui peut entraîner le rejet des fichiers de paiement.
+Certaines banques exigent que les fichiers de paiement XML téléversés au cours d'une même journée aient un identifiant de message (`MsgId`) unique pour chaque transaction. 
+Le logiciel GADM ne garantit pas cette unicité, ce qui peut entraîner le rejet des fichiers de paiement.
 
 ## Solution
 
