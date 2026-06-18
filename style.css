@@ -5,7 +5,8 @@
 
 /* --- Variables et Style Global --- */
 :root {
-    --primary-color: #007bff;
+    --primary-color: #047481;
+    --primary-color-hover: #035d68;
     --background-color: #f8f9fa;
     --text-color: #333;
     --border-color: #dee2e6;
@@ -80,7 +81,7 @@ button {
 }
 
 button:hover {
-    background-color: #0056b3;
+    background-color: var(--primary-color-hover);
 }
 
 #logout-button {
@@ -94,6 +95,61 @@ button:hover {
 /* --- Notifications et utilitaires --- */
 .hidden {
     display: none !important;
+}
+
+/* --- Popup accès non autorisé --- */
+.overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    z-index: 1000;
+}
+
+.overlay-card {
+    background: var(--container-bg);
+    border-radius: 1rem;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+    max-width: 400px;
+    width: 100%;
+    padding: 2rem;
+    text-align: center;
+}
+
+.overlay-icon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+}
+
+.overlay-card h2 {
+    margin: 0 0 0.5rem;
+    font-weight: 800;
+}
+
+.overlay-card p {
+    color: #64748b;
+    font-size: 0.9rem;
+    margin: 0 0 0.5rem;
+}
+
+.overlay-card a {
+    color: var(--primary-color);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.overlay-card #back-to-portal {
+    display: block;
+    width: 100%;
+    margin-top: 1.5rem;
+    background: #0f172a;
+}
+
+.overlay-card #back-to-portal:hover {
+    background: #1e293b;
 }
 
 #error-notification, #xml-error-notification {

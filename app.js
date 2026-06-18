@@ -22,11 +22,42 @@ const resultsTable = document.getElementById('results-table'); // Référence à
 const resultsTableBody = resultsTable.querySelector('tbody');
 const downloadZipButton = document.getElementById('download-zip-button');
 const xmlErrorNotification = document.getElementById('xml-error-notification');
+const accessDenied = document.getElementById('access-denied');
+const adminEmailLink = document.getElementById('admin-email-link');
+const backToPortalButton = document.getElementById('back-to-portal');
 
-// Configuration Supabase
-const SUPABASE_URL = "https://supabase.admin.multibrasservices.com"; 
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzQ5NzY1NjAwLCJleHAiOjE5MDc1MzIwMDB9.9ddhM7Tsjainc8QOYmhtz9VQqXBZgRUpPFUeOa-ApjE";
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Configuration runtime injectée via config.js (window.APP_CONFIG)
+const APP_CONFIG = window.APP_CONFIG || {};
+const SUPABASE_URL = APP_CONFIG.SUPABASE_URL;
+const SUPABASE_ANON_KEY = APP_CONFIG.SUPABASE_ANON_KEY;
+const SERVICE_ID = APP_CONFIG.SERVICE_ID;
+const PORTAL_URL = APP_CONFIG.PORTAL_URL || "https://saaas.zoomali.io";
+const ADMIN_EMAIL = APP_CONFIG.ADMIN_EMAIL || "multibrasservices@gmail.com";
+const COOKIE_DOMAIN = APP_CONFIG.COOKIE_DOMAIN || "";
+
+// Cookie storage cross-domain (.zoomali.io) : partage la session SSO entre tous
+// les sous-domaines. Un utilisateur déjà connecté sur le portail arrive connecté ici.
+const cookieStorage = {
+    getItem: (key) => {
+        const match = document.cookie.match(
+            new RegExp('(^| )' + key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '=([^;]+)')
+        );
+        return match ? decodeURIComponent(match[2]) : null;
+    },
+    setItem: (key, value) => {
+        const domain = COOKIE_DOMAIN ? `; Domain=${COOKIE_DOMAIN}` : '';
+        const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+        document.cookie = `${key}=${encodeURIComponent(value)}; Path=/; SameSite=Lax${domain}${secure}; Max-Age=31536000`;
+    },
+    removeItem: (key) => {
+        const domain = COOKIE_DOMAIN ? `; Domain=${COOKIE_DOMAIN}` : '';
+        document.cookie = `${key}=; Path=/; SameSite=Lax${domain}; Max-Age=0`;
+    },
+};
+
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { storage: cookieStorage },
+});
 
 // NOUVEAU : Variables d'état pour les données et le tri
 let modifiedFiles = [];
@@ -59,20 +90,58 @@ async function handleLogout() {
     await supabaseClient.auth.signOut();
     checkSession();
 }
+// Guard d'accès (équivalent vanilla du ServiceGate @multibrasservices/auth).
+// La RLS du portail ne retourne la ligne user_services que si l'utilisateur est
+// rattaché à ce service. Absente (sans erreur réseau) = pas d'accès.
+async function checkAccess(userId) {
+    try {
+        const { data, error } = await supabaseClient
+            .from('user_services')
+            .select('service_id')
+            .eq('user_id', userId)
+            .eq('service_id', SERVICE_ID)
+            .maybeSingle();
+        if (error) {
+            // Erreur réseau/serveur : fail-open. La RLS sur les données reste la vraie barrière.
+            console.warn('checkAccess: erreur réseau, fail-open —', error.message);
+            return true;
+        }
+        return data !== null;
+    } catch (e) {
+        console.warn('checkAccess: exception, fail-open —', e.message);
+        return true;
+    }
+}
+
 async function checkSession() {
     const { data: { session } } = await supabaseClient.auth.getSession();
     const user = session?.user;
-    updateUI(user);
+    if (!user) {
+        updateUI(false, false);
+        return;
+    }
+    const granted = await checkAccess(user.id);
+    updateUI(true, granted);
 }
-function updateUI(user) {
-    if (user) {
-        authContainer.classList.add('hidden');
-        servicesContainer.classList.remove('hidden');
-        logoutButton.classList.remove('hidden');
-    } else {
+
+function updateUI(isAuthenticated, accessGranted) {
+    if (!isAuthenticated) {
+        // Non connecté : page de login uniquement
         authContainer.classList.remove('hidden');
         servicesContainer.classList.add('hidden');
+        accessDenied.classList.add('hidden');
         logoutButton.classList.add('hidden');
+        return;
+    }
+    // Connecté : la page de login disparaît dans tous les cas
+    authContainer.classList.add('hidden');
+    logoutButton.classList.remove('hidden');
+    if (accessGranted) {
+        servicesContainer.classList.remove('hidden');
+        accessDenied.classList.add('hidden');
+    } else {
+        servicesContainer.classList.add('hidden');
+        accessDenied.classList.remove('hidden');
     }
 }
 
@@ -89,9 +158,11 @@ async function handleFileProcessing() {
 
     // Réinitialisation
     modifiedFiles = [];
-    tableData = []; // Vider les données précédentes
+    tableData = [];
     showXmlError('');
     resultsContainer.classList.add('hidden');
+    processButton.disabled = true; // Désactiver le bouton pendant le traitement
+    processButton.textContent = 'Traitement en cours...';
 
     let fileCounter = 1;
     let totalCtrlSum = 0;
@@ -99,53 +170,53 @@ async function handleFileProcessing() {
     for (const file of files) {
         try {
             const fileContent = await file.text();
-            const parser = new DOMParser();
-            const xmlDoc = parser.parseFromString(fileContent, "application/xml");
 
-            if (xmlDoc.querySelector('parsererror')) throw new Error(`Fichier malformé : ${file.name}`);
+            // Invocation de la Edge Function
+            const { data, error } = await supabaseClient.functions.invoke('process-xml', {
+                body: fileContent,
+            });
 
-            const ctrlSumNode = xmlDoc.querySelector('CtrlSum');
-            const reqdExctnDtNode = xmlDoc.querySelector('ReqdExctnDt'); // NOUVEAU : Extraction de la date
-
-            if (!ctrlSumNode) {
-                console.warn(`Balise <CtrlSum> non trouvée dans ${file.name}. Fichier ignoré.`);
-                continue;
+            if (error) {
+                throw new Error(error.message);
             }
-            
-            const ctrlSumValue = parseFloat(ctrlSumNode.textContent);
-            const execDateValue = reqdExctnDtNode ? reqdExctnDtNode.textContent : ''; // Gère si la balise est absente
-            totalCtrlSum += ctrlSumValue;
 
-            // NOUVEAU : On stocke les données dans notre tableau au lieu de générer le HTML directement
+            // Récupération des données traitées
+            const { modifiedContent, ctrlSum, execDate } = data;
+
+            totalCtrlSum += ctrlSum;
+
+            // Stockage des données pour l'affichage et le téléchargement
             tableData.push({
-                ctrlSum: ctrlSumValue,
-                execDate: execDateValue,
+                ctrlSum: ctrlSum,
+                execDate: execDate,
                 fileCounter: fileCounter,
                 fileName: file.name
             });
 
-            // La modification du fichier reste la même
-            let msgIdCounter = fileCounter;
-            const modifiedContent = fileContent.replace(/<MsgId>(.*?)<\/MsgId>/g, (match, originalMsgId) => {
-                const newMsgId = `${originalMsgId.trim()} ${msgIdCounter}`;
-                msgIdCounter++;
-                return `<MsgId>${newMsgId}</MsgId>`;
-            });
             modifiedFiles.push({ name: file.name, content: modifiedContent });
             fileCounter++;
+
         } catch (error) {
             showXmlError(`Erreur avec le fichier ${file.name}: ${error.message}`);
+            // Réactiver le bouton en cas d'erreur
+            processButton.disabled = false;
+            processButton.textContent = 'Traiter les Fichiers';
             return;
         }
     }
 
+    // Affichage des résultats si tout s'est bien passé
     if (tableData.length > 0) {
         const totalSumElement = document.getElementById('total-sum');
         totalSumElement.textContent = `Total des opérations : ${totalCtrlSum.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}`;
         
-        renderTable(); // NOUVEAU : On appelle la fonction d'affichage
+        renderTable();
         resultsContainer.classList.remove('hidden');
     }
+
+    // Réactiver le bouton à la fin du traitement
+    processButton.disabled = false;
+    processButton.textContent = 'Traiter les Fichiers';
 }
 
 // NOUVEAU : Fonction dédiée à l'affichage du tableau
@@ -222,6 +293,11 @@ loginForm.addEventListener('submit', handleLogin);
 logoutButton.addEventListener('click', handleLogout);
 processButton.addEventListener('click', handleFileProcessing);
 downloadZipButton.addEventListener('click', downloadModifiedFilesAsZip);
+
+// Popup accès non autorisé : lien admin + retour portail
+adminEmailLink.textContent = ADMIN_EMAIL;
+adminEmailLink.href = `mailto:${ADMIN_EMAIL}`;
+backToPortalButton.addEventListener('click', () => { window.location.href = PORTAL_URL; });
 
 // NOUVEAU : Écouteur d'événement pour le tri (délégation d'événement)
 resultsTable.querySelector('thead').addEventListener('click', (event) => {

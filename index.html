@@ -59,13 +59,25 @@
         </div>
     </main>
 
+    <!-- Popup accès non autorisé (utilisateur authentifié mais sans droit sur ce service) -->
+    <div id="access-denied" class="overlay hidden">
+        <div class="overlay-card">
+            <div class="overlay-icon" aria-hidden="true">⚠️</div>
+            <h2>Accès non autorisé</h2>
+            <p>Vous n'avez pas accès à ce service.<br>Merci de contacter l'administrateur :</p>
+            <a id="admin-email-link" href="#"></a>
+            <button id="back-to-portal" type="button">Retour au portail</button>
+        </div>
+    </div>
+
     <footer>
         <p>© 2025 MultiBrasServices - Distribué sous licence MIT</p>
-        <p>version 22.10.25</p>
+        <p>version 18.06.26</p>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="config.js"></script>
     <script src="app.js"></script>
 
 </body>

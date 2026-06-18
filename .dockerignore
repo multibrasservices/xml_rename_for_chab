@@ -2,3 +2,11 @@
 .gitignore
 Dockerfile
 update_github.bat
+
+# config.js local : en prod il est régénéré au boot depuis config.template.js + env Coolify
+config.js
+
+# Artefacts hors-build
+Capture.PNG
+README.md
+LICENSE
