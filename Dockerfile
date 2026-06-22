@@ -4,6 +4,27 @@ FROM nginx:alpine
 # Copier le site statique (config.js local exclu via .dockerignore)
 COPY . /usr/share/nginx/html
 
+# Config Nginx : revalidation systematique des fichiers HTML/JS/CSS (et config.js).
+# Sans cela, Nginx ne renvoie aucun Cache-Control et les navigateurs servent une
+# version perimee de app.js apres un deploiement. Avec "no-cache", le navigateur
+# revalide via ETag : 304 si inchange (zero surcout), 200 + nouvelle version sinon.
+RUN cat > /etc/nginx/conf.d/default.conf <<'EOF'
+server {
+    listen 80;
+    server_name localhost;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    location ~* \.(?:html|js|css)$ {
+        add_header Cache-Control "no-cache" always;
+    }
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}
+EOF
+
 # Génération de la config runtime au démarrage du conteneur, à partir des
 # variables d'environnement Coolify (envsubst est fourni par l'image nginx).
 # Les scripts /docker-entrypoint.d/*.sh sont exécutés automatiquement au boot.
