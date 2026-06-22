@@ -18,11 +18,19 @@ Elle effectue les opérations suivantes :
 3.  **Calcul de la somme de contrôle** : Affiche la somme des montants (`CtrlSum`) de tous les fichiers pour vérification.
 4.  **Téléchargement** : Permet de télécharger une archive `.zip` contenant tous les fichiers modifiés, prêts à être téléversés.
 
+## Architecture
+
+Le traitement des fichiers est effectué **100 % côté navigateur** (`DOMParser` / `XMLSerializer` natifs, dans `app.js`). Les fichiers de paiement ne sont **jamais envoyés sur le réseau** : ils sont lus, modifiés et re-générés en mémoire sur le poste de l'utilisateur — plus simple, plus robuste (aucune dépendance serveur) et plus confidentiel.
+
+Supabase n'est utilisé que pour l'**authentification** (SSO `.zoomali.io`) et le **contrôle d'accès** (table `user_services`, équivalent vanilla de `ServiceGate`). Il n'y a **pas d'Edge Function** : une version antérieure déléguait le traitement à une fonction `process-xml`, supprimée car inutile.
+
 ## Déploiement
 
-L'application est hébergée et accessible via GitHub Pages à l'adresse suivante :
+L'application est conteneurisée (`Dockerfile` nginx) et déployée sur le **VPS OVH via Coolify**, accessible à l'adresse :
 
-[https://multibrasservices.github.io/xml_rename_for_chab/](https://multibrasservices.github.io/xml_rename_for_chab/)
+[https://xml-rename.zoomali.io](https://xml-rename.zoomali.io)
+
+Le déploiement est automatique : tout `push` sur `main` déclenche un rebuild Coolify. La configuration runtime (`config.js` : `SERVICE_ID`, clés Supabase) est injectée au démarrage du conteneur depuis les variables Coolify et n'est jamais versionnée.
 
 ## Licence
 
