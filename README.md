@@ -32,6 +32,8 @@ L'application est conteneurisée (`Dockerfile` nginx) et déployée sur le **VPS
 
 Le déploiement est automatique : tout `push` sur `main` déclenche un rebuild Coolify. La configuration runtime (`config.js` : `SERVICE_ID`, clés Supabase) est injectée au démarrage du conteneur depuis les variables Coolify et n'est jamais versionnée.
 
+La config Nginx (dans le `Dockerfile`) impose `Cache-Control: no-cache` sur les fichiers `.html`/`.js`/`.css` : le navigateur revalide via ETag à chaque chargement (`304` si inchangé, nouvelle version sinon), ce qui garantit que les utilisateurs reçoivent toujours la dernière version après un déploiement, sans cache périmé.
+
 ## Licence
 
 Ce projet est distribué sous la licence MIT. Voir le fichier `LICENSE` pour plus de détails.
