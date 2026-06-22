@@ -149,6 +149,43 @@ function updateUI(isAuthenticated, accessGranted) {
 // ÉTAPE 3 : MICRO-SERVICE - PROCESSEUR DE FICHIERS XML
 // -------------------------------------------------------------------
 
+// Traitement 100% local (navigateur) via DOMParser/XMLSerializer natifs.
+// Remplace l'ancienne Edge Function process-xml : aucune donnée ne quitte le
+// poste (fichiers SEPA traités en mémoire), donc plus de dépendance serveur ni
+// de point de panne. "Simple is better than complex."
+function processXmlContent(fileContent) {
+    if (!fileContent) {
+        throw new Error("Fichier vide : contenu XML requis.");
+    }
+
+    const xmlDoc = new DOMParser().parseFromString(fileContent, "application/xml");
+
+    if (xmlDoc.querySelector('parsererror')) {
+        throw new Error("Fichier XML mal formé.");
+    }
+
+    const ctrlSumNode = xmlDoc.querySelector('CtrlSum');
+    if (!ctrlSumNode) {
+        throw new Error("Balise <CtrlSum> introuvable dans le fichier XML.");
+    }
+
+    const ctrlSum = parseFloat(ctrlSumNode.textContent || '0');
+    const reqdExctnDtNode = xmlDoc.querySelector('ReqdExctnDt');
+    const execDate = reqdExctnDtNode ? reqdExctnDtNode.textContent : '';
+
+    // Numérotation des MsgId — compteur réinitialisé à chaque fichier.
+    let msgIdCounter = 1;
+    xmlDoc.querySelectorAll('MsgId').forEach(node => {
+        const originalMsgId = node.textContent || '';
+        node.textContent = `${originalMsgId.trim()} ${msgIdCounter}`;
+        msgIdCounter++;
+    });
+
+    const modifiedContent = new XMLSerializer().serializeToString(xmlDoc);
+
+    return { modifiedContent, ctrlSum, execDate };
+}
+
 async function handleFileProcessing() {
     const files = fileInput.files;
     if (files.length === 0) {
@@ -171,17 +208,8 @@ async function handleFileProcessing() {
         try {
             const fileContent = await file.text();
 
-            // Invocation de la Edge Function
-            const { data, error } = await supabaseClient.functions.invoke('process-xml', {
-                body: fileContent,
-            });
-
-            if (error) {
-                throw new Error(error.message);
-            }
-
-            // Récupération des données traitées
-            const { modifiedContent, ctrlSum, execDate } = data;
+            // Traitement local (navigateur), plus d'appel réseau.
+            const { modifiedContent, ctrlSum, execDate } = processXmlContent(fileContent);
 
             totalCtrlSum += ctrlSum;
 
