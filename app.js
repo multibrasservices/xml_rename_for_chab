@@ -58,6 +58,8 @@ const cookieStorage = {
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: { storage: cookieStorage },
 });
+// Double sécurité : l'écran du code tant qu'il n'est pas donné pour cette session (19/10/2026).
+ZoomAliDouble.surveiller(supabaseClient, SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // NOUVEAU : Variables d'état pour les données et le tri
 let modifiedFiles = [];
